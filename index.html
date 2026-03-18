@@ -1,1066 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ResearchFlow</title>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #f7f6f3;
-    --white: #ffffff;
-    --ink: #1a1814;
-    --ink2: #4a4742;
-    --ink3: #9a9590;
-    --border: #e8e5df;
-    --accent: #2d5be3;
-    --accent-light: #eef2fd;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
-    --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
-    --shadow-lg: 0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
-    --r-sm: 10px;
-    --r-md: 16px;
-    --r-lg: 22px;
-    /* Label colors */
-    --c-intro: #2d5be3;
-    --c-target: #e3622d;
-    --c-research: #22a06b;
-    --c-stats: #8b5cf6;
-    --c-problem: #e3222d;
-    --c-solution: #0ea5e9;
-    --c-conclusion: #d97706;
-    --c-general: #6b7280;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'Sora', sans-serif;
-    background: var(--bg);
-    color: var(--ink);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* ─── SCREENS ─── */
-  .screen { display: none; min-height: 100vh; }
-  .screen.active { display: flex; flex-direction: column; }
-
-  /* ─── DASHBOARD ─── */
-  #dashboard {
-    padding: 0;
-    background: var(--bg);
-  }
-
-  .dash-header {
-    padding: 52px 24px 28px;
-    background: var(--white);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .dash-header .eyebrow {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 6px;
-  }
-
-  .dash-header h1 {
-    font-family: 'DM Serif Display', serif;
-    font-size: 30px;
-    color: var(--ink);
-    line-height: 1.15;
-  }
-
-  .dash-header p {
-    font-size: 13px;
-    color: var(--ink3);
-    margin-top: 6px;
-  }
-
-  .dash-grid {
-    padding: 24px 16px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    flex: 1;
-  }
-
-  .section-card {
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: var(--r-lg);
-    padding: 22px 18px 20px;
-    cursor: pointer;
-    transition: transform 0.18s ease, box-shadow 0.18s ease;
-    position: relative;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    min-height: 140px;
-  }
-
-  .section-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: var(--card-color, var(--accent));
-    border-radius: var(--r-lg) var(--r-lg) 0 0;
-  }
-
-  .section-card:active {
-    transform: scale(0.97);
-    box-shadow: var(--shadow-sm);
-  }
-
-  .card-icon {
-    font-size: 24px;
-    line-height: 1;
-  }
-
-  .card-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--ink);
-    line-height: 1.3;
-  }
-
-  .card-count {
-    font-size: 12px;
-    color: var(--ink3);
-    margin-top: auto;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .card-count span {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px; height: 20px;
-    background: var(--card-color-light, var(--accent-light));
-    color: var(--card-color, var(--accent));
-    border-radius: 50%;
-    font-size: 11px;
-    font-weight: 700;
-  }
-
-  /* ─── SECTION FEED ─── */
-  #feed {
-    background: var(--bg);
-  }
-
-  .feed-header {
-    background: var(--white);
-    border-bottom: 1px solid var(--border);
-    padding: 52px 20px 16px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: var(--shadow-sm);
-  }
-
-  .back-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--white);
-    cursor: pointer;
-    font-size: 18px;
-    color: var(--ink);
-    flex-shrink: 0;
-    transition: background 0.15s;
-  }
-  .back-btn:active { background: var(--bg); }
-
-  .feed-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 20px;
-    color: var(--ink);
-    flex: 1;
-  }
-
-  .feed-body {
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding-bottom: 100px;
-  }
-
-  /* NEW POST BUTTON */
-  .new-post-btn {
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: var(--r-md);
-    padding: 15px 20px;
-    font-family: 'Sora', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    transition: opacity 0.15s;
-    box-shadow: 0 4px 14px rgba(45,91,227,0.35);
-  }
-  .new-post-btn:active { opacity: 0.88; }
-
-  /* POST CARD */
-  .post-card {
-    background: var(--white);
-    border: 1px solid var(--border);
-    border-radius: var(--r-lg);
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-    animation: fadeUp 0.3s ease both;
-  }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .post-label-bar {
-    padding: 9px 16px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .post-label-bar .pin-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    opacity: 0.6;
-    transition: opacity 0.15s;
-  }
-  .post-label-bar .pin-btn.pinned { opacity: 1; }
-
-  .post-body { padding: 14px 16px 16px; }
-
-  .post-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--ink);
-    margin-bottom: 6px;
-    line-height: 1.35;
-  }
-
-  .post-content {
-    font-size: 13.5px;
-    color: var(--ink2);
-    line-height: 1.65;
-  }
-
-  .post-extra {
-    margin-top: 12px;
-    padding: 10px 12px;
-    background: var(--bg);
-    border-radius: var(--r-sm);
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-
-  .extra-item { font-size: 12px; color: var(--ink2); }
-  .extra-item strong { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink3); margin-bottom: 2px; }
-
-  .post-img {
-    width: 100%;
-    border-radius: var(--r-sm);
-    margin-top: 12px;
-    object-fit: cover;
-    max-height: 200px;
-  }
-
-  .post-footer {
-    padding: 10px 16px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .post-date { font-size: 11px; color: var(--ink3); }
-
-  .post-actions { display: flex; gap: 10px; }
-
-  .post-act-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 15px;
-    opacity: 0.5;
-    transition: opacity 0.15s;
-    padding: 4px;
-  }
-  .post-act-btn:active { opacity: 1; }
-
-  /* STICKY FAB */
-  .fab {
-    position: fixed;
-    bottom: 24px;
-    right: 20px;
-    width: 56px; height: 56px;
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 50%;
-    font-size: 26px;
-    cursor: pointer;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 6px 20px rgba(45,91,227,0.45);
-    z-index: 200;
-    transition: transform 0.2s;
-  }
-  .fab.visible { display: flex; }
-  .fab:active { transform: scale(0.93); }
-
-  /* EMPTY STATE */
-  .empty-state {
-    text-align: center;
-    padding: 48px 24px;
-    color: var(--ink3);
-  }
-  .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
-  .empty-state p { font-size: 14px; line-height: 1.5; }
-
-  /* ─── NEW POST PANEL ─── */
-  #post-panel {
-    position: fixed;
-    inset: 0;
-    background: var(--white);
-    z-index: 500;
-    display: none;
-    flex-direction: column;
-    overflow-y: auto;
-  }
-  #post-panel.open { display: flex; }
-
-  .panel-header {
-    background: var(--white);
-    border-bottom: 1px solid var(--border);
-    padding: 52px 20px 16px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-
-  .panel-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 20px;
-    flex: 1;
-  }
-
-  .save-btn {
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 20px;
-    padding: 8px 18px;
-    font-family: 'Sora', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
-  .save-btn:active { opacity: 0.8; }
-
-  .panel-body {
-    padding: 20px 20px 48px;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-  }
-
-  .form-group { display: flex; flex-direction: column; gap: 7px; }
-
-  .form-label {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ink3);
-  }
-
-  .form-input, .form-textarea, .form-select {
-    font-family: 'Sora', sans-serif;
-    font-size: 14px;
-    color: var(--ink);
-    background: var(--bg);
-    border: 1.5px solid var(--border);
-    border-radius: var(--r-sm);
-    padding: 12px 14px;
-    outline: none;
-    transition: border-color 0.15s;
-    width: 100%;
-  }
-
-  .form-input:focus, .form-textarea:focus, .form-select:focus {
-    border-color: var(--accent);
-    background: var(--white);
-  }
-
-  .form-textarea { resize: vertical; min-height: 110px; line-height: 1.6; }
-
-  .smart-tools {
-    background: var(--bg);
-    border: 1.5px dashed var(--border);
-    border-radius: var(--r-md);
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .smart-tools-header {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--accent);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .smart-generate-btn {
-    background: var(--ink);
-    color: #fff;
-    border: none;
-    border-radius: var(--r-sm);
-    padding: 13px;
-    font-family: 'Sora', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    width: 100%;
-    transition: opacity 0.15s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-  }
-  .smart-generate-btn:active { opacity: 0.8; }
-
-  /* IMAGE UPLOAD */
-  .img-upload-zone {
-    border: 2px dashed var(--border);
-    border-radius: var(--r-md);
-    padding: 20px;
-    text-align: center;
-    color: var(--ink3);
-    font-size: 13px;
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-  }
-  .img-upload-zone:hover { border-color: var(--accent); background: var(--accent-light); }
-  .img-upload-zone input { display: none; }
-
-  .preview-img {
-    width: 100%;
-    border-radius: var(--r-sm);
-    margin-top: 10px;
-    max-height: 180px;
-    object-fit: cover;
-    display: none;
-  }
-
-  /* HIGHLIGHT in posts */
-  mark {
-    background: #fef3c7;
-    border-radius: 2px;
-    padding: 0 2px;
-  }
-
-  /* DELETE confirm */
-  .delete-confirm {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-    z-index: 600;
-    display: none;
-    align-items: flex-end;
-    justify-content: center;
-  }
-  .delete-confirm.open { display: flex; }
-  .delete-box {
-    background: var(--white);
-    border-radius: var(--r-lg) var(--r-lg) 0 0;
-    padding: 28px 24px 40px;
-    width: 100%;
-    max-width: 480px;
-    text-align: center;
-  }
-  .delete-box h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
-  .delete-box p { font-size: 13px; color: var(--ink3); margin-bottom: 22px; }
-  .delete-actions { display: flex; gap: 10px; }
-  .delete-actions button {
-    flex: 1;
-    padding: 14px;
-    border-radius: var(--r-sm);
-    border: none;
-    font-family: 'Sora', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .del-cancel { background: var(--bg); color: var(--ink2); }
-  .del-confirm { background: #fee2e2; color: #b91c1c; }
-
-  /* LABEL PILL */
-  .label-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>ResearchFlow</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════
-     SCREEN 1: DASHBOARD
-══════════════════════════════════════════ -->
-<div id="dashboard" class="screen active">
-  <div class="dash-header">
-    <div class="eyebrow">Research Tool</div>
-    <h1>My Research<br>Project</h1>
-    <p>Tap a section to open your notes</p>
+  <!-- ══════════════════ SCREEN: DASHBOARD ══════════════════ -->
+  <div id="screen-dashboard" class="screen active">
+    <div class="dash-header">
+      <div class="eyebrow">ResearchFlow</div>
+      <h1>My Research<br><em>Project</em></h1>
+      <p>Tap a section to open · Hold to delete</p>
+    </div>
+
+    <div class="dash-grid" id="dashGrid"></div>
+
+    <div class="dash-empty" id="dashEmpty">
+      <div class="empty-icon">📂</div>
+      <p>No sections yet.<br>Tap the button below to create your first one.</p>
+    </div>
+
+    <button class="add-section-btn" id="addSectionBtn">＋ New Section</button>
   </div>
-  <div class="dash-grid" id="dashGrid"></div>
-</div>
 
-<!-- ══════════════════════════════════════════
-     SCREEN 2: SECTION FEED
-══════════════════════════════════════════ -->
-<div id="feed" class="screen">
-  <div class="feed-header">
-    <button class="back-btn" onclick="goBack()">←</button>
-    <div class="feed-title" id="feedTitle">Section</div>
+  <!-- ══════════════════ SCREEN: FEED ══════════════════ -->
+  <div id="screen-feed" class="screen">
+    <div class="feed-header">
+      <button class="back-btn" id="feedBackBtn">←</button>
+      <span class="feed-title" id="feedTitle">Section</span>
+      <div class="feed-header-spacer"></div>
+    </div>
+    <div class="feed-body" id="feedBody"></div>
   </div>
-  <div class="feed-body" id="feedBody"></div>
-</div>
 
-<!-- FAB -->
-<button class="fab" id="fab" onclick="openPostPanel()">＋</button>
+  <!-- ══════════════════ FAB ══════════════════ -->
+  <button class="fab" id="fab">＋</button>
 
-<!-- ══════════════════════════════════════════
-     NEW POST PANEL
-══════════════════════════════════════════ -->
-<div id="post-panel">
-  <div class="panel-header">
-    <button class="back-btn" onclick="closePostPanel()">✕</button>
-    <div class="panel-title">New Post</div>
-    <button class="save-btn" onclick="savePost()">Save</button>
-  </div>
-  <div class="panel-body">
-
-    <!-- LABEL -->
-    <div class="form-group">
-      <label class="form-label">Label</label>
-      <select class="form-select" id="postLabel" onchange="updateSmartTools()">
-        <option value="Introduction">📘 Introduction</option>
-        <option value="Target Market">🎯 Target Market</option>
-        <option value="Research">🔬 Research / Body</option>
-        <option value="Statistics">📊 Statistics</option>
-        <option value="Problem">⚠️ Problem</option>
-        <option value="Solution">💡 Solution</option>
-        <option value="Conclusion">🧾 Conclusion</option>
-        <option value="General Note">📝 General Note</option>
-      </select>
-    </div>
-
-    <!-- TITLE -->
-    <div class="form-group">
-      <label class="form-label">Title</label>
-      <input type="text" class="form-input" id="postTitle" placeholder="Enter a title...">
-    </div>
-
-    <!-- CONTENT -->
-    <div class="form-group">
-      <label class="form-label">Content</label>
-      <textarea class="form-textarea" id="postContent" placeholder="Write your research note..."></textarea>
-    </div>
-
-    <!-- SMART TOOLS -->
-    <div class="smart-tools" id="smartTools"></div>
-
-    <!-- IMAGE -->
-    <div class="form-group">
-      <label class="form-label">Image (Optional)</label>
-      <div class="img-upload-zone" onclick="document.getElementById('imgInput').click()">
-        📷 Tap to attach a photo or screenshot
-        <input type="file" id="imgInput" accept="image/*" onchange="previewImage(event)">
-      </div>
-      <img class="preview-img" id="imgPreview" alt="preview">
-    </div>
-
-  </div>
-</div>
-
-<!-- DELETE CONFIRM -->
-<div class="delete-confirm" id="deleteConfirm">
-  <div class="delete-box">
-    <h3>Delete Post?</h3>
-    <p>This can't be undone.</p>
-    <div class="delete-actions">
-      <button class="del-cancel" onclick="closeDelete()">Cancel</button>
-      <button class="del-confirm" onclick="confirmDelete()">Delete</button>
-    </div>
-  </div>
-</div>
-
-<script>
-// ══════════════════════════════════════
-// DATA
-// ══════════════════════════════════════
-const SECTIONS = [
-  { id: 'Introduction', title: 'Introduction', icon: '📘', color: '#2d5be3', colorLight: '#eef2fd' },
-  { id: 'Target Market', title: 'Target Market', icon: '🎯', color: '#e3622d', colorLight: '#fef3ee' },
-  { id: 'Research', title: 'Research / Body', icon: '🔬', color: '#22a06b', colorLight: '#edfaf4' },
-  { id: 'Statistics', title: 'Statistics', icon: '📊', color: '#8b5cf6', colorLight: '#f3effe' },
-  { id: 'Problem', title: 'Problem', icon: '⚠️', color: '#e3222d', colorLight: '#feeef0' },
-  { id: 'Solution', title: 'Solution', icon: '💡', color: '#0ea5e9', colorLight: '#e0f5fe' },
-  { id: 'Conclusion', title: 'Conclusion', icon: '🧾', color: '#d97706', colorLight: '#fef9ec' },
-  { id: 'General Note', title: 'General Note', icon: '📝', color: '#6b7280', colorLight: '#f3f4f6' },
-];
-
-let currentSection = null;
-let deleteTargetId = null;
-let editingPostId = null;
-
-function getPosts() {
-  try { return JSON.parse(localStorage.getItem('rf_posts') || '[]'); } catch { return []; }
-}
-function savePosts(posts) {
-  localStorage.setItem('rf_posts', JSON.stringify(posts));
-}
-
-// ══════════════════════════════════════
-// DASHBOARD
-// ══════════════════════════════════════
-function renderDashboard() {
-  const posts = getPosts();
-  const grid = document.getElementById('dashGrid');
-  grid.innerHTML = '';
-  SECTIONS.forEach(sec => {
-    const count = posts.filter(p => p.section === sec.id).length;
-    const card = document.createElement('div');
-    card.className = 'section-card';
-    card.style.setProperty('--card-color', sec.color);
-    card.style.setProperty('--card-color-light', sec.colorLight);
-    card.innerHTML = `
-      <div class="card-icon">${sec.icon}</div>
-      <div class="card-title">${sec.title}</div>
-      <div class="card-count"><span>${count}</span> ${count === 1 ? 'note' : 'notes'}</div>
-    `;
-    card.onclick = () => openSection(sec.id);
-    grid.appendChild(card);
-  });
-}
-
-// ══════════════════════════════════════
-// SECTION FEED
-// ══════════════════════════════════════
-function openSection(sectionId) {
-  currentSection = sectionId;
-  const sec = SECTIONS.find(s => s.id === sectionId);
-  document.getElementById('feedTitle').textContent = sec.title;
-  showScreen('feed');
-  document.getElementById('fab').classList.add('visible');
-  renderFeed();
-}
-
-function renderFeed() {
-  const posts = getPosts().filter(p => p.section === currentSection);
-  // pinned first, then by date desc
-  posts.sort((a, b) => {
-    if (a.pinned && !b.pinned) return -1;
-    if (!a.pinned && b.pinned) return 1;
-    return new Date(b.date) - new Date(a.date);
-  });
-
-  const body = document.getElementById('feedBody');
-  body.innerHTML = '';
-
-  // NEW POST button at top
-  const btn = document.createElement('button');
-  btn.className = 'new-post-btn';
-  btn.innerHTML = `<span style="font-size:18px">✏️</span> New Post`;
-  btn.onclick = openPostPanel;
-  body.appendChild(btn);
-
-  if (posts.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-state';
-    empty.innerHTML = `<div class="emoji">📭</div><p>No notes yet.<br>Tap <strong>New Post</strong> to add your first research note.</p>`;
-    body.appendChild(empty);
-    return;
-  }
-
-  posts.forEach(post => {
-    body.appendChild(buildPostCard(post));
-  });
-}
-
-function buildPostCard(post) {
-  const sec = SECTIONS.find(s => s.id === post.section);
-  const card = document.createElement('div');
-  card.className = 'post-card';
-  card.id = `card-${post.id}`;
-
-  // label bar
-  const bar = document.createElement('div');
-  bar.className = 'post-label-bar';
-  bar.style.background = sec.colorLight;
-  bar.style.color = sec.color;
-  bar.innerHTML = `
-    <span>${sec.icon} ${post.label || post.section}</span>
-    <button class="pin-btn ${post.pinned ? 'pinned' : ''}" onclick="togglePin('${post.id}')" title="${post.pinned ? 'Unpin' : 'Pin'}">📌</button>
-  `;
-  card.appendChild(bar);
-
-  // body
-  const body = document.createElement('div');
-  body.className = 'post-body';
-
-  if (post.title) {
-    const t = document.createElement('div');
-    t.className = 'post-title';
-    t.textContent = post.title;
-    body.appendChild(t);
-  }
-
-  if (post.content) {
-    const c = document.createElement('div');
-    c.className = 'post-content';
-    c.innerHTML = post.content.replace(/\*\*(.*?)\*\*/g, '<mark>$1</mark>');
-    body.appendChild(c);
-  }
-
-  // extra data
-  if (post.extraData && Object.keys(post.extraData).length > 0) {
-    const extra = document.createElement('div');
-    extra.className = 'post-extra';
-    Object.entries(post.extraData).forEach(([k, v]) => {
-      if (!v) return;
-      const item = document.createElement('div');
-      item.className = 'extra-item';
-      item.innerHTML = `<strong>${k}</strong>${v}`;
-      extra.appendChild(item);
-    });
-    body.appendChild(extra);
-  }
-
-  if (post.image) {
-    const img = document.createElement('img');
-    img.className = 'post-img';
-    img.src = post.image;
-    img.alt = 'note image';
-    body.appendChild(img);
-  }
-
-  card.appendChild(body);
-
-  // footer
-  const footer = document.createElement('div');
-  footer.className = 'post-footer';
-  footer.innerHTML = `
-    <span class="post-date">📅 ${formatDate(post.date)}</span>
-    <div class="post-actions">
-      <button class="post-act-btn" onclick="editPost('${post.id}')" title="Edit">✏️</button>
-      <button class="post-act-btn" onclick="askDelete('${post.id}')" title="Delete">🗑️</button>
-    </div>
-  `;
-  card.appendChild(footer);
-  return card;
-}
-
-// ══════════════════════════════════════
-// POST PANEL
-// ══════════════════════════════════════
-function openPostPanel(postId = null) {
-  const panel = document.getElementById('post-panel');
-  editingPostId = postId;
-
-  if (postId) {
-    const post = getPosts().find(p => p.id === postId);
-    document.getElementById('postLabel').value = post.label || post.section;
-    document.getElementById('postTitle').value = post.title || '';
-    document.getElementById('postContent').value = post.content || '';
-    if (post.image) {
-      document.getElementById('imgPreview').src = post.image;
-      document.getElementById('imgPreview').style.display = 'block';
-    } else {
-      document.getElementById('imgPreview').style.display = 'none';
-    }
-    // restore extra data
-    window._editingExtra = post.extraData || {};
-  } else {
-    // default label = current section
-    const labelEl = document.getElementById('postLabel');
-    if (currentSection) labelEl.value = currentSection;
-    document.getElementById('postTitle').value = '';
-    document.getElementById('postContent').value = '';
-    document.getElementById('imgPreview').style.display = 'none';
-    window._editingExtra = {};
-  }
-
-  updateSmartTools();
-  panel.classList.add('open');
-}
-
-function closePostPanel() {
-  document.getElementById('post-panel').classList.remove('open');
-  editingPostId = null;
-  window._editingExtra = {};
-}
-
-function savePost() {
-  const label = document.getElementById('postLabel').value;
-  const title = document.getElementById('postTitle').value.trim();
-  const content = document.getElementById('postContent').value.trim();
-  const imgSrc = document.getElementById('imgPreview').src;
-  const hasImage = document.getElementById('imgPreview').style.display !== 'none' && imgSrc && imgSrc !== window.location.href;
-
-  // collect extra data from smart tools
-  const extraData = collectExtraData(label);
-
-  const posts = getPosts();
-
-  if (editingPostId) {
-    const idx = posts.findIndex(p => p.id === editingPostId);
-    if (idx > -1) {
-      posts[idx] = { ...posts[idx], label, title, content, extraData, image: hasImage ? imgSrc : null, date: posts[idx].date };
-    }
-  } else {
-    const newPost = {
-      id: Date.now().toString(),
-      section: currentSection,
-      label, title, content, extraData,
-      image: hasImage ? imgSrc : null,
-      pinned: false,
-      date: new Date().toISOString().split('T')[0]
-    };
-    posts.push(newPost);
-  }
-
-  savePosts(posts);
-  closePostPanel();
-  renderFeed();
-  renderDashboard();
-}
-
-// ══════════════════════════════════════
-// SMART TOOLS
-// ══════════════════════════════════════
-const SMART_CONFIGS = {
-  'Target Market': {
-    emoji: '🎯',
-    desc: 'Define your audience',
-    fields: [
-      { key: 'Age Group', placeholder: 'e.g. 8–9 years old' },
-      { key: 'Buyer', placeholder: 'e.g. Parents, Students' },
-      { key: 'Problem', placeholder: 'e.g. Struggling with math' },
-    ],
-    generate: (d) => `${d['Buyer'] || 'Students'} aged ${d['Age Group'] || '?'} who face: ${d['Problem'] || '(problem not specified)'}. This group represents our primary target audience for the research.`
-  },
-  'Statistics': {
-    emoji: '📊',
-    desc: 'Calculate your data',
-    fields: [
-      { key: 'Question', placeholder: 'Survey question asked' },
-      { key: 'Yes Count', placeholder: 'Number of yes responses', type: 'number' },
-      { key: 'Total', placeholder: 'Total respondents', type: 'number' },
-    ],
-    generate: (d) => {
-      const yes = parseInt(d['Yes Count']) || 0;
-      const total = parseInt(d['Total']) || 1;
-      const pct = Math.round((yes / total) * 100);
-      return `Survey question: "${d['Question'] || '(question)'}"\nResult: ${yes} out of ${total} respondents answered yes (${pct}%).`;
-    }
-  },
-  'Problem': {
-    emoji: '⚠️',
-    desc: 'Define the problem clearly',
-    fields: [
-      { key: 'Problem Description', placeholder: 'What is the problem?' },
-      { key: 'Who is Affected', placeholder: 'e.g. Grade 3 students' },
-      { key: 'Impact', placeholder: 'e.g. Low academic performance' },
-    ],
-    generate: (d) => `Problem: ${d['Problem Description'] || '(not stated)'}. This primarily affects ${d['Who is Affected'] || 'the target group'}, resulting in ${d['Impact'] || 'negative outcomes'}.`
-  },
-  'Solution': {
-    emoji: '💡',
-    desc: 'Describe your solution',
-    fields: [
-      { key: 'Product / Idea', placeholder: 'Name of your solution' },
-      { key: 'How It Helps', placeholder: 'How does it solve the problem?' },
-      { key: 'Target User', placeholder: 'Who benefits from it?' },
-    ],
-    generate: (d) => `Solution: ${d['Product / Idea'] || '(product)'} — ${d['How It Helps'] || '(description)'}. This directly benefits ${d['Target User'] || 'the target audience'}.`
-  },
-  'Conclusion': {
-    emoji: '🧾',
-    desc: 'Summarize your findings',
-    fields: [
-      { key: 'Key Finding 1', placeholder: 'Most important finding' },
-      { key: 'Key Finding 2', placeholder: 'Second important finding' },
-      { key: 'Final Decision', placeholder: 'Your recommendation' },
-    ],
-    generate: (d) => `Based on the research, the key findings are: (1) ${d['Key Finding 1'] || '—'}, and (2) ${d['Key Finding 2'] || '—'}. Therefore, the final recommendation is: ${d['Final Decision'] || '(not stated)'}.`
-  },
-};
-
-function updateSmartTools() {
-  const label = document.getElementById('postLabel').value;
-  const container = document.getElementById('smartTools');
-  const config = SMART_CONFIGS[label];
-  const extra = window._editingExtra || {};
-
-  if (!config) {
-    container.innerHTML = `<div class="smart-tools-header">📝 General Note — just write freely above.</div>`;
-    return;
-  }
-
-  let html = `<div class="smart-tools-header">${config.emoji} Smart Tools — ${config.desc}</div>`;
-  config.fields.forEach(field => {
-    const val = extra[field.key] || '';
-    html += `
+  <!-- ══════════════════ MODAL: NEW SECTION ══════════════════ -->
+  <div class="modal-overlay" id="sectionModal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">New Section</h2>
       <div class="form-group">
-        <label class="form-label">${field.key}</label>
-        <input type="${field.type || 'text'}" class="form-input smart-field" data-key="${field.key}" placeholder="${field.placeholder}" value="${val}">
-      </div>`;
-  });
-  html += `<button class="smart-generate-btn" onclick="autoGenerate()">✨ Auto-Generate Content</button>`;
-  container.innerHTML = html;
-}
+        <label class="form-label">Section Name</label>
+        <input type="text" class="form-input" id="sectionNameInput" placeholder="e.g. Target Market, Statistics…" maxlength="40">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pick a Color</label>
+        <div class="color-picker" id="colorPicker"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pick an Icon</label>
+        <div class="icon-picker" id="iconPicker"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="sectionCancel">Cancel</button>
+        <button class="btn-primary" id="sectionSave">Create Section</button>
+      </div>
+    </div>
+  </div>
 
-function collectExtraData(label) {
-  const config = SMART_CONFIGS[label];
-  if (!config) return {};
-  const data = {};
-  document.querySelectorAll('.smart-field').forEach(el => {
-    data[el.dataset.key] = el.value.trim();
-  });
-  return data;
-}
+  <!-- ══════════════════ PANEL: NEW / EDIT POST ══════════════════ -->
+  <div class="post-panel" id="postPanel">
+    <div class="panel-header">
+      <button class="back-btn" id="panelCloseBtn">✕</button>
+      <span class="panel-title" id="panelTitle">New Post</span>
+      <button class="save-btn" id="panelSaveBtn">Save</button>
+    </div>
+    <div class="panel-body">
 
-function autoGenerate() {
-  const label = document.getElementById('postLabel').value;
-  const config = SMART_CONFIGS[label];
-  if (!config) return;
-  const data = {};
-  document.querySelectorAll('.smart-field').forEach(el => {
-    data[el.dataset.key] = el.value.trim();
-  });
-  const generated = config.generate(data);
-  document.getElementById('postContent').value = generated;
-  document.getElementById('postContent').style.borderColor = 'var(--accent)';
-  setTimeout(() => { document.getElementById('postContent').style.borderColor = ''; }, 1500);
-}
+      <div class="form-group">
+        <label class="form-label">Label</label>
+        <div class="label-row">
+          <select class="form-select" id="postLabel"></select>
+          <button class="add-label-btn" id="addLabelBtn" title="Add custom label">＋</button>
+        </div>
+      </div>
 
-// ══════════════════════════════════════
-// PIN / DELETE / EDIT
-// ══════════════════════════════════════
-function togglePin(id) {
-  const posts = getPosts();
-  const idx = posts.findIndex(p => p.id === id);
-  if (idx > -1) { posts[idx].pinned = !posts[idx].pinned; savePosts(posts); renderFeed(); }
-}
+      <div class="form-group">
+        <label class="form-label">Title</label>
+        <input type="text" class="form-input" id="postTitle" placeholder="Enter a title…">
+      </div>
 
-function editPost(id) { openPostPanel(id); }
+      <div class="form-group">
+        <label class="form-label">Content</label>
+        <textarea class="form-textarea" id="postContent" placeholder="Write your research note… wrap words in **double stars** to highlight them"></textarea>
+      </div>
 
-function askDelete(id) {
-  deleteTargetId = id;
-  document.getElementById('deleteConfirm').classList.add('open');
-}
-function closeDelete() {
-  deleteTargetId = null;
-  document.getElementById('deleteConfirm').classList.remove('open');
-}
-function confirmDelete() {
-  if (!deleteTargetId) return;
-  const posts = getPosts().filter(p => p.id !== deleteTargetId);
-  savePosts(posts);
-  closeDelete();
-  renderFeed();
-  renderDashboard();
-}
+      <!-- SMART TOOLS -->
+      <div class="smart-tools" id="smartTools"></div>
 
-// ══════════════════════════════════════
-// IMAGE PREVIEW
-// ══════════════════════════════════════
-function previewImage(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const img = document.getElementById('imgPreview');
-    img.src = ev.target.result;
-    img.style.display = 'block';
-  };
-  reader.readAsDataURL(file);
-}
+      <!-- IMAGE -->
+      <div class="form-group">
+        <label class="form-label">Image <span class="optional">optional</span></label>
+        <div class="img-upload-zone" id="imgUploadZone">
+          <span class="upload-icon">📷</span>
+          <span>Tap to attach a photo or screenshot</span>
+          <input type="file" id="imgInput" accept="image/*">
+        </div>
+        <img class="img-preview" id="imgPreview" alt="preview">
+        <button class="img-remove-btn" id="imgRemoveBtn">✕ Remove image</button>
+      </div>
 
-// ══════════════════════════════════════
-// NAVIGATION
-// ══════════════════════════════════════
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  window.scrollTo(0, 0);
-}
+    </div>
+  </div>
 
-function goBack() {
-  document.getElementById('fab').classList.remove('visible');
-  showScreen('dashboard');
-  renderDashboard();
-}
+  <!-- ══════════════════ MODAL: ADD LABEL ══════════════════ -->
+  <div class="modal-overlay" id="addLabelModal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title">Add Custom Label</h2>
+      <div class="form-group">
+        <label class="form-label">Label Name</label>
+        <input type="text" class="form-input" id="newLabelInput" placeholder="e.g. Methodology, Interview…" maxlength="30">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="addLabelCancel">Cancel</button>
+        <button class="btn-primary" id="addLabelSave">Add Label</button>
+      </div>
+    </div>
+  </div>
 
-// ══════════════════════════════════════
-// UTILS
-// ══════════════════════════════════════
-function formatDate(d) {
-  if (!d) return '';
-  const date = new Date(d);
-  return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
-}
+  <!-- ══════════════════ MODAL: DELETE CONFIRM ══════════════════ -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal-sheet modal-sheet--sm">
+      <div class="modal-handle"></div>
+      <div class="delete-icon-big" id="deleteModalIcon">🗑️</div>
+      <h2 class="modal-title" id="deleteModalTitle">Delete Post?</h2>
+      <p class="modal-sub" id="deleteModalSub">This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="deleteCancel">Cancel</button>
+        <button class="btn-danger" id="deleteConfirm">Delete</button>
+      </div>
+    </div>
+  </div>
 
-// ══════════════════════════════════════
-// INIT
-// ══════════════════════════════════════
-window._editingExtra = {};
-renderDashboard();
-</script>
+  <script src="app.js"></script>
 </body>
 </html>
