@@ -1,4 +1,9 @@
 /* ══════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════ */
+function uid() { return Math.random().toString(36).slice(2, 9); }
+
+/* ══════════════════════════════════════════
    CONSTANTS
 ══════════════════════════════════════════ */
 const PALETTE = [
@@ -22,102 +27,70 @@ const DEFAULT_LABELS = [
   'Methodology','Interview','Survey','Analysis'
 ];
 
-const SMART_CONFIGS = {
-  'Target Market': {
-    emoji: '🎯',
-    desc: 'Define your audience',
-    fields: [
-      { key: 'Age Group',  placeholder: 'e.g. 8–9 years old' },
-      { key: 'Buyer',      placeholder: 'e.g. Parents, Students' },
-      { key: 'Problem',    placeholder: 'e.g. Struggling with math' },
-    ],
-    generate: d =>
-      `${d['Buyer'] || 'Students'} aged ${d['Age Group'] || '?'} who struggle with: ${d['Problem'] || '(not specified)'}. This group is our primary target audience.`
-  },
-  'Statistics': {
-    emoji: '📊',
-    desc: 'Auto-calculate percentages',
-    fields: [
-      { key: 'Survey Question', placeholder: 'What did you ask?' },
-      { key: 'Yes Count',       placeholder: 'Number who said yes', type: 'number' },
-      { key: 'Total',           placeholder: 'Total respondents',   type: 'number' },
-    ],
-    generate: d => {
-      const yes   = parseInt(d['Yes Count']) || 0;
-      const total = parseInt(d['Total'])     || 1;
-      const pct   = Math.round((yes / total) * 100);
-      return `Survey: "${d['Survey Question'] || '(question)'}"\n${yes} out of ${total} respondents answered yes — **${pct}%**.`;
-    }
-  },
-  'Problem': {
-    emoji: '⚠️',
-    desc: 'Define the problem clearly',
-    fields: [
-      { key: 'Description',   placeholder: 'What is the problem?' },
-      { key: 'Who is Affected', placeholder: 'e.g. Grade 3 students' },
-      { key: 'Impact',         placeholder: 'e.g. Low academic performance' },
-    ],
-    generate: d =>
-      `Problem: ${d['Description'] || '(not stated)'}.\nThis affects ${d['Who is Affected'] || 'the target group'}, leading to ${d['Impact'] || 'negative outcomes'}.`
-  },
-  'Solution': {
-    emoji: '💡',
-    desc: 'Describe your solution',
-    fields: [
-      { key: 'Product / Idea', placeholder: 'Name of your solution' },
-      { key: 'How It Helps',   placeholder: 'How does it solve the problem?' },
-      { key: 'Target User',    placeholder: 'Who benefits?' },
-    ],
-    generate: d =>
-      `Solution: **${d['Product / Idea'] || '(product)'}** — ${d['How It Helps'] || '(description)'}.\nBenefits: ${d['Target User'] || 'the target audience'}.`
-  },
-  'Conclusion': {
-    emoji: '🧾',
-    desc: 'Summarize your findings',
-    fields: [
-      { key: 'Key Finding 1', placeholder: 'Most important finding' },
-      { key: 'Key Finding 2', placeholder: 'Second important finding' },
-      { key: 'Recommendation', placeholder: 'Your final recommendation' },
-    ],
-    generate: d =>
-      `Key findings:\n1. ${d['Key Finding 1'] || '—'}\n2. ${d['Key Finding 2'] || '—'}\n\nRecommendation: ${d['Recommendation'] || '(not stated)'}.`
-  },
+// Preset starter fields per label — user can delete / rename / add freely
+const SMART_PRESETS = {
+  'Target Market': [
+    { id: uid(), label: 'Age Group',  value: '', placeholder: 'e.g. 8–9 years old' },
+    { id: uid(), label: 'Buyer',      value: '', placeholder: 'e.g. Parents, Students' },
+    { id: uid(), label: 'Problem',    value: '', placeholder: 'e.g. Struggling with math' },
+  ],
+  'Statistics': [
+    { id: uid(), label: 'Survey Question', value: '', placeholder: 'What did you ask?' },
+    { id: uid(), label: 'Yes Count',       value: '', placeholder: 'e.g. 8' },
+    { id: uid(), label: 'Total',           value: '', placeholder: 'e.g. 10' },
+  ],
+  'Problem': [
+    { id: uid(), label: 'Description',     value: '', placeholder: 'What is the problem?' },
+    { id: uid(), label: 'Who is Affected', value: '', placeholder: 'e.g. Grade 3 students' },
+    { id: uid(), label: 'Impact',          value: '', placeholder: 'e.g. Low academic performance' },
+  ],
+  'Solution': [
+    { id: uid(), label: 'Product / Idea', value: '', placeholder: 'Name of your solution' },
+    { id: uid(), label: 'How It Helps',   value: '', placeholder: 'How does it solve the problem?' },
+    { id: uid(), label: 'Target User',    value: '', placeholder: 'Who benefits?' },
+  ],
+  'Conclusion': [
+    { id: uid(), label: 'Key Finding 1',  value: '', placeholder: 'Most important finding' },
+    { id: uid(), label: 'Key Finding 2',  value: '', placeholder: 'Second important finding' },
+    { id: uid(), label: 'Recommendation', value: '', placeholder: 'Your final recommendation' },
+  ],
 };
 
 /* ══════════════════════════════════════════
    STATE
 ══════════════════════════════════════════ */
 let state = {
-  sections:      [],   // { id, title, icon, color, colorLight }
-  posts:         [],   // { id, sectionId, label, title, content, extraData, image, pinned, date }
-  customLabels:  [...DEFAULT_LABELS],
+  sections:     [],
+  posts:        [],       // { id, sectionId, label, title, content, customFields:[{id,label,value}], image, imgSize, pinned, date }
+  customLabels: [...DEFAULT_LABELS],
 };
 
 let currentSectionId  = null;
 let editingPostId     = null;
 let pendingDeleteId   = null;
-let pendingDeleteType = null; // 'post' | 'section'
+let pendingDeleteType = null;
 let selectedColor     = PALETTE[0];
 let selectedIcon      = ICONS[0];
-let _editExtra        = {};
+
+// live custom fields while editing a post
+let _liveFields = [];
 
 /* ══════════════════════════════════════════
    STORAGE
 ══════════════════════════════════════════ */
 function loadState() {
   try {
-    const raw = localStorage.getItem('rf_state_v2');
+    const raw = localStorage.getItem('rf_state_v3');
     if (raw) {
-      const parsed = JSON.parse(raw);
-      state.sections     = parsed.sections     || [];
-      state.posts        = parsed.posts        || [];
-      state.customLabels = parsed.customLabels || [...DEFAULT_LABELS];
+      const p = JSON.parse(raw);
+      state.sections     = p.sections     || [];
+      state.posts        = p.posts        || [];
+      state.customLabels = p.customLabels || [...DEFAULT_LABELS];
     }
   } catch { /* ignore */ }
 }
-
 function saveState() {
-  try { localStorage.setItem('rf_state_v2', JSON.stringify(state)); } catch { /* ignore */ }
+  try { localStorage.setItem('rf_state_v3', JSON.stringify(state)); } catch { /* ignore */ }
 }
 
 /* ══════════════════════════════════════════
@@ -136,11 +109,7 @@ function renderDashboard() {
   const grid  = document.getElementById('dashGrid');
   const empty = document.getElementById('dashEmpty');
   grid.innerHTML = '';
-
-  if (state.sections.length === 0) {
-    empty.classList.add('visible');
-    return;
-  }
+  if (state.sections.length === 0) { empty.classList.add('visible'); return; }
   empty.classList.remove('visible');
 
   state.sections.forEach((sec, idx) => {
@@ -150,7 +119,6 @@ function renderDashboard() {
     card.style.setProperty('--c',    sec.color);
     card.style.setProperty('--c-lt', sec.colorLight);
     card.style.animationDelay = (idx * 0.04) + 's';
-
     card.innerHTML = `
       <div class="card-icon">${sec.icon}</div>
       <div class="card-title">${escHtml(sec.title)}</div>
@@ -159,21 +127,16 @@ function renderDashboard() {
           <span class="card-count-badge">${count}</span>
           ${count === 1 ? 'note' : 'notes'}
         </div>
-        <button class="card-delete-btn" title="Delete section" data-id="${sec.id}">🗑️</button>
-      </div>
-    `;
-
-    // open section on click (but not on delete button)
+        <button class="card-delete-btn" title="Delete section">🗑️</button>
+      </div>`;
     card.addEventListener('click', e => {
       if (e.target.closest('.card-delete-btn')) return;
       openSection(sec.id);
     });
-
     card.querySelector('.card-delete-btn').addEventListener('click', e => {
       e.stopPropagation();
       askDelete('section', sec.id);
     });
-
     grid.appendChild(card);
   });
 }
@@ -182,7 +145,6 @@ function renderDashboard() {
    NEW SECTION MODAL
 ══════════════════════════════════════════ */
 function openSectionModal() {
-  // reset
   document.getElementById('sectionNameInput').value = '';
   selectedColor = PALETTE[0];
   selectedIcon  = ICONS[0];
@@ -193,47 +155,33 @@ function openSectionModal() {
 }
 
 function renderColorPicker() {
-  const picker = document.getElementById('colorPicker');
-  picker.innerHTML = '';
+  const el = document.getElementById('colorPicker');
+  el.innerHTML = '';
   PALETTE.forEach(p => {
     const sw = document.createElement('div');
     sw.className = 'color-swatch' + (p.hex === selectedColor.hex ? ' selected' : '');
     sw.style.background = p.hex;
-    sw.addEventListener('click', () => {
-      selectedColor = p;
-      renderColorPicker();
-    });
-    picker.appendChild(sw);
+    sw.addEventListener('click', () => { selectedColor = p; renderColorPicker(); });
+    el.appendChild(sw);
   });
 }
 
 function renderIconPicker() {
-  const picker = document.getElementById('iconPicker');
-  picker.innerHTML = '';
+  const el = document.getElementById('iconPicker');
+  el.innerHTML = '';
   ICONS.forEach(icon => {
     const btn = document.createElement('div');
     btn.className = 'icon-opt' + (icon === selectedIcon ? ' selected' : '');
     btn.textContent = icon;
-    btn.addEventListener('click', () => {
-      selectedIcon = icon;
-      renderIconPicker();
-    });
-    picker.appendChild(btn);
+    btn.addEventListener('click', () => { selectedIcon = icon; renderIconPicker(); });
+    el.appendChild(btn);
   });
 }
 
 function saveSectionModal() {
   const name = document.getElementById('sectionNameInput').value.trim();
   if (!name) { shakeEl(document.getElementById('sectionNameInput')); return; }
-
-  const sec = {
-    id:         Date.now().toString(),
-    title:      name,
-    icon:       selectedIcon,
-    color:      selectedColor.hex,
-    colorLight: selectedColor.lt,
-  };
-  state.sections.push(sec);
+  state.sections.push({ id: Date.now().toString(), title: name, icon: selectedIcon, color: selectedColor.hex, colorLight: selectedColor.lt });
   saveState();
   closeModal('sectionModal');
   renderDashboard();
@@ -252,17 +200,15 @@ function openSection(sectionId) {
 }
 
 function renderFeed() {
-  const body  = document.getElementById('feedBody');
+  const body = document.getElementById('feedBody');
   body.innerHTML = '';
 
-  // top new post button
   const topBtn = document.createElement('button');
   topBtn.className = 'new-post-top-btn';
   topBtn.innerHTML = `<span>✏️</span> Write a new note…`;
   topBtn.addEventListener('click', () => openPostPanel(null));
   body.appendChild(topBtn);
 
-  // posts for this section
   const posts = state.posts
     .filter(p => p.sectionId === currentSectionId)
     .sort((a, b) => {
@@ -272,27 +218,24 @@ function renderFeed() {
     });
 
   if (posts.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'feed-empty';
-    empty.innerHTML = `<div class="empty-icon">📭</div><p>No notes yet.<br>Tap the button above to get started.</p>`;
-    body.appendChild(empty);
+    const e = document.createElement('div');
+    e.className = 'feed-empty';
+    e.innerHTML = `<div class="empty-icon">📭</div><p>No notes yet.<br>Tap the button above to get started.</p>`;
+    body.appendChild(e);
     return;
   }
-
   posts.forEach(post => body.appendChild(buildPostCard(post)));
 }
 
 /* ══════════════════════════════════════════
-   BUILD POST CARD
+   POST CARD
 ══════════════════════════════════════════ */
 function buildPostCard(post) {
   const sec  = state.sections.find(s => s.id === post.sectionId) || {};
   const card = document.createElement('div');
   card.className = 'post-card' + (post.pinned ? ' is-pinned' : '');
   card.id = 'post-' + post.id;
-  if (post.pinned) {
-    card.style.setProperty('--c', sec.color || '#1a56db');
-  }
+  if (post.pinned) card.style.setProperty('--c', sec.color || '#1a56db');
 
   // label bar
   const bar = document.createElement('div');
@@ -301,8 +244,7 @@ function buildPostCard(post) {
   bar.style.color       = sec.color      || '#1a56db';
   bar.innerHTML = `
     <span class="post-label-name">${sec.icon || '📝'} ${escHtml(post.label || sec.title || '')}</span>
-    <button class="post-pin-btn ${post.pinned ? 'on' : 'off'}" title="${post.pinned ? 'Unpin' : 'Pin'}">📌</button>
-  `;
+    <button class="post-pin-btn ${post.pinned ? 'on' : 'off'}" title="${post.pinned ? 'Unpin' : 'Pin'}">📌</button>`;
   bar.querySelector('.post-pin-btn').addEventListener('click', () => togglePin(post.id));
   card.appendChild(bar);
 
@@ -324,26 +266,51 @@ function buildPostCard(post) {
     body.appendChild(c);
   }
 
-  // extra data
-  if (post.extraData && Object.keys(post.extraData).some(k => post.extraData[k])) {
-    const extra = document.createElement('div');
-    extra.className = 'post-extra';
-    Object.entries(post.extraData).forEach(([k, v]) => {
-      if (!v) return;
-      const item = document.createElement('div');
-      item.className = 'extra-item';
-      item.innerHTML = `<strong>${escHtml(k)}</strong><span>${escHtml(v)}</span>`;
-      extra.appendChild(item);
+  // custom fields (shown as compact data chips, NO extra box)
+  if (post.customFields && post.customFields.some(f => f.value)) {
+    const chips = document.createElement('div');
+    chips.className = 'post-chips';
+    post.customFields.filter(f => f.value).forEach(f => {
+      const chip = document.createElement('div');
+      chip.className = 'post-chip';
+      chip.innerHTML = `<span class="chip-label">${escHtml(f.label)}</span><span class="chip-val">${escHtml(f.value)}</span>`;
+      chips.appendChild(chip);
     });
-    body.appendChild(extra);
+    body.appendChild(chips);
   }
 
+  // image — never crop, with size control
   if (post.image) {
+    const imgWrap = document.createElement('div');
+    imgWrap.className = 'post-img-wrap';
+    const imgSize = post.imgSize || 'full';
+    imgWrap.setAttribute('data-size', imgSize);
+
     const img = document.createElement('img');
     img.className = 'post-img';
     img.src = post.image;
     img.alt = 'note image';
-    body.appendChild(img);
+    imgWrap.appendChild(img);
+
+    // size toggles
+    const sizeRow = document.createElement('div');
+    sizeRow.className = 'img-size-row';
+    ['S','M','L','Full'].forEach(sz => {
+      const btn = document.createElement('button');
+      btn.className = 'img-size-btn' + (imgSize === sz.toLowerCase() ? ' active' : '');
+      btn.textContent = sz;
+      btn.addEventListener('click', () => {
+        const idx = state.posts.findIndex(p => p.id === post.id);
+        if (idx > -1) {
+          state.posts[idx].imgSize = sz.toLowerCase();
+          saveState();
+          renderFeed();
+        }
+      });
+      sizeRow.appendChild(btn);
+    });
+    imgWrap.appendChild(sizeRow);
+    body.appendChild(imgWrap);
   }
 
   card.appendChild(body);
@@ -356,8 +323,7 @@ function buildPostCard(post) {
     <div class="post-actions">
       <button class="post-act-btn" title="Edit">✏️</button>
       <button class="post-act-btn" title="Delete">🗑️</button>
-    </div>
-  `;
+    </div>`;
   footer.querySelectorAll('.post-act-btn')[0].addEventListener('click', () => openPostPanel(post.id));
   footer.querySelectorAll('.post-act-btn')[1].addEventListener('click', () => askDelete('post', post.id));
   card.appendChild(footer);
@@ -370,67 +336,65 @@ function buildPostCard(post) {
 ══════════════════════════════════════════ */
 function openPostPanel(postId) {
   editingPostId = postId;
-  _editExtra    = {};
-
-  // populate label dropdown
   populateLabelSelect();
 
   if (postId) {
     const post = state.posts.find(p => p.id === postId);
-    document.getElementById('panelTitle').textContent   = 'Edit Post';
-    document.getElementById('postLabel').value          = post.label || '';
-    document.getElementById('postTitle').value          = post.title || '';
-    document.getElementById('postContent').value        = post.content || '';
-    _editExtra = { ...(post.extraData || {}) };
-
-    if (post.image) {
-      showImagePreview(post.image);
-    } else {
-      hideImagePreview();
-    }
+    document.getElementById('panelTitle').textContent = 'Edit Post';
+    document.getElementById('postLabel').value        = post.label || '';
+    document.getElementById('postTitle').value        = post.title || '';
+    document.getElementById('postContent').value      = post.content || '';
+    _liveFields = (post.customFields || []).map(f => ({ ...f }));
+    if (post.image) showImagePreview(post.image);
+    else hideImagePreview();
   } else {
     document.getElementById('panelTitle').textContent = 'New Post';
-    document.getElementById('postTitle').value        = '';
-    document.getElementById('postContent').value      = '';
+    document.getElementById('postTitle').value   = '';
+    document.getElementById('postContent').value = '';
+    _liveFields = [];
     hideImagePreview();
   }
 
-  updateSmartTools();
+  renderSmartTools();
   document.getElementById('postPanel').classList.add('open');
 }
 
 function closePostPanel() {
   document.getElementById('postPanel').classList.remove('open');
   editingPostId = null;
-  _editExtra    = {};
+  _liveFields   = [];
 }
 
 function savePost() {
+  // flush current field values from DOM into _liveFields
+  syncFieldsFromDOM();
+
   const label   = document.getElementById('postLabel').value;
   const title   = document.getElementById('postTitle').value.trim();
   const content = document.getElementById('postContent').value.trim();
   const imgEl   = document.getElementById('imgPreview');
   const hasImg  = imgEl.style.display !== 'none' && imgEl.src && imgEl.src !== window.location.href;
-  const extra   = collectExtraData(label);
 
   if (editingPostId) {
     const idx = state.posts.findIndex(p => p.id === editingPostId);
     if (idx > -1) {
       state.posts[idx] = {
         ...state.posts[idx],
-        label, title, content, extraData: extra,
+        label, title, content,
+        customFields: [..._liveFields],
         image: hasImg ? imgEl.src : null,
       };
     }
   } else {
     state.posts.push({
-      id:         Date.now().toString(),
-      sectionId:  currentSectionId,
+      id:           Date.now().toString(),
+      sectionId:    currentSectionId,
       label, title, content,
-      extraData:  extra,
-      image:      hasImg ? imgEl.src : null,
-      pinned:     false,
-      date:       new Date().toISOString().split('T')[0],
+      customFields: [..._liveFields],
+      image:        hasImg ? imgEl.src : null,
+      imgSize:      'full',
+      pinned:       false,
+      date:         new Date().toISOString().split('T')[0],
     });
   }
 
@@ -445,13 +409,14 @@ function savePost() {
 ══════════════════════════════════════════ */
 function populateLabelSelect() {
   const sel = document.getElementById('postLabel');
+  const cur = sel.value;
   sel.innerHTML = '';
   state.customLabels.forEach(lbl => {
     const opt = document.createElement('option');
-    opt.value = lbl;
-    opt.textContent = lbl;
+    opt.value = lbl; opt.textContent = lbl;
     sel.appendChild(opt);
   });
+  if (cur && state.customLabels.includes(cur)) sel.value = cur;
 }
 
 function openAddLabelModal() {
@@ -470,63 +435,74 @@ function saveCustomLabel() {
   closeModal('addLabelModal');
   populateLabelSelect();
   document.getElementById('postLabel').value = name;
-  updateSmartTools();
+  // new label = no presets, keep current fields
+  renderSmartTools();
 }
 
 /* ══════════════════════════════════════════
-   SMART TOOLS
+   SMART TOOLS — fully customizable fields
 ══════════════════════════════════════════ */
-function updateSmartTools() {
-  const label   = document.getElementById('postLabel').value;
-  const config  = SMART_CONFIGS[label];
-  const container = document.getElementById('smartTools');
+function onLabelChange() {
+  syncFieldsFromDOM();
+  renderSmartTools();
+}
 
-  if (!config) {
-    container.innerHTML = `<div class="smart-header">📝 General — write freely in the content field above.</div>`;
-    return;
+function syncFieldsFromDOM() {
+  document.querySelectorAll('.smart-field-row').forEach(row => {
+    const id     = row.dataset.id;
+    const lbl    = row.querySelector('.sf-label-input').value.trim();
+    const val    = row.querySelector('.sf-value-input').value;
+    const idx    = _liveFields.findIndex(f => f.id === id);
+    if (idx > -1) { _liveFields[idx].label = lbl; _liveFields[idx].value = val; }
+  });
+}
+
+function renderSmartTools() {
+  const label     = document.getElementById('postLabel').value;
+  const container = document.getElementById('smartTools');
+  let html = `<div class="smart-header">🗂️ Custom Data Fields <span class="smart-sub">— shown on the post card</span></div>`;
+
+  if (_liveFields.length === 0) {
+    html += `<div class="smart-empty">No fields yet. Tap ＋ Add Field to get started.</div>`;
   }
 
-  let html = `<div class="smart-header">${config.emoji} Smart Tools — ${config.desc}</div>`;
-  config.fields.forEach(f => {
-    const val = _editExtra[f.key] || '';
-    html += `
-      <div class="form-group">
-        <label class="form-label">${f.key}</label>
-        <input type="${f.type || 'text'}" class="form-input smart-field"
-               data-key="${escAttr(f.key)}"
-               placeholder="${escAttr(f.placeholder)}"
-               value="${escAttr(val)}">
-      </div>`;
-  });
-  html += `<button class="smart-generate-btn" id="autoGenBtn">✨ Auto-Generate Content</button>`;
+  html += `<div id="smartFieldsList"></div>`;
+
+  html += `<div class="smart-actions">`;
+  html += `<button class="smart-add-btn" id="smartAddBtn">＋ Add Field</button>`;
+
+  html += `</div>`;
+
   container.innerHTML = html;
+  renderFieldsList();
 
-  document.getElementById('autoGenBtn').addEventListener('click', autoGenerate);
+  document.getElementById('smartAddBtn').addEventListener('click', () => {
+    syncFieldsFromDOM();
+    _liveFields.push({ id: uid(), label: '', value: '', placeholder: 'Value…' });
+    renderFieldsList();
+  });
+
 }
 
-function collectExtraData(label) {
-  const config = SMART_CONFIGS[label];
-  if (!config) return {};
-  const data = {};
-  document.querySelectorAll('.smart-field').forEach(el => {
-    data[el.dataset.key] = el.value.trim();
+function renderFieldsList() {
+  const list = document.getElementById('smartFieldsList');
+  if (!list) return;
+  list.innerHTML = '';
+  _liveFields.forEach(field => {
+    const row = document.createElement('div');
+    row.className = 'smart-field-row';
+    row.dataset.id = field.id;
+    row.innerHTML = `
+      <input class="sf-label-input form-input" placeholder="Field name…" value="${escAttr(field.label)}">
+      <input class="sf-value-input form-input" placeholder="${escAttr(field.placeholder || 'Value…')}" value="${escAttr(field.value)}">
+      <button class="sf-del-btn" title="Remove field">✕</button>`;
+    row.querySelector('.sf-del-btn').addEventListener('click', () => {
+      syncFieldsFromDOM();
+      _liveFields = _liveFields.filter(f => f.id !== field.id);
+      renderFieldsList();
+    });
+    list.appendChild(row);
   });
-  return data;
-}
-
-function autoGenerate() {
-  const label  = document.getElementById('postLabel').value;
-  const config = SMART_CONFIGS[label];
-  if (!config) return;
-  const data = {};
-  document.querySelectorAll('.smart-field').forEach(el => {
-    data[el.dataset.key] = el.value.trim();
-  });
-  const generated = config.generate(data);
-  const ta = document.getElementById('postContent');
-  ta.value = generated;
-  ta.style.borderColor = 'var(--accent)';
-  setTimeout(() => { ta.style.borderColor = ''; }, 1400);
 }
 
 /* ══════════════════════════════════════════
@@ -534,11 +510,7 @@ function autoGenerate() {
 ══════════════════════════════════════════ */
 function togglePin(postId) {
   const idx = state.posts.findIndex(p => p.id === postId);
-  if (idx > -1) {
-    state.posts[idx].pinned = !state.posts[idx].pinned;
-    saveState();
-    renderFeed();
-  }
+  if (idx > -1) { state.posts[idx].pinned = !state.posts[idx].pinned; saveState(); renderFeed(); }
 }
 
 function askDelete(type, id) {
@@ -547,21 +519,19 @@ function askDelete(type, id) {
   const titleEl = document.getElementById('deleteModalTitle');
   const subEl   = document.getElementById('deleteModalSub');
   const iconEl  = document.getElementById('deleteModalIcon');
-
   if (type === 'section') {
     const sec   = state.sections.find(s => s.id === id);
     const count = state.posts.filter(p => p.sectionId === id).length;
     iconEl.textContent  = '🗂️';
     titleEl.textContent = `Delete "${sec?.title}"?`;
     subEl.textContent   = count > 0
-      ? `This will also delete ${count} note${count > 1 ? 's' : ''} inside it. Cannot be undone.`
-      : 'This section is empty. Cannot be undone.';
+      ? `This will also delete ${count} note${count > 1 ? 's' : ''} inside it.`
+      : 'This section is empty.';
   } else {
     iconEl.textContent  = '🗑️';
     titleEl.textContent = 'Delete this post?';
     subEl.textContent   = 'This action cannot be undone.';
   }
-
   openModal('deleteModal');
 }
 
@@ -574,37 +544,27 @@ function doDelete() {
   }
   saveState();
   closeModal('deleteModal');
-
-  if (pendingDeleteType === 'section') {
-    renderDashboard();
-  } else {
-    renderFeed();
-    renderDashboard();
-  }
-
-  pendingDeleteId   = null;
-  pendingDeleteType = null;
+  if (pendingDeleteType === 'section') renderDashboard();
+  else { renderFeed(); renderDashboard(); }
+  pendingDeleteId = null; pendingDeleteType = null;
 }
 
 /* ══════════════════════════════════════════
    IMAGE
 ══════════════════════════════════════════ */
 function showImagePreview(src) {
-  const img     = document.getElementById('imgPreview');
-  const remBtn  = document.getElementById('imgRemoveBtn');
-  const zone    = document.getElementById('imgUploadZone');
-  img.src             = src;
-  img.style.display   = 'block';
+  const img    = document.getElementById('imgPreview');
+  const remBtn = document.getElementById('imgRemoveBtn');
+  const zone   = document.getElementById('imgUploadZone');
+  img.src = src; img.style.display = 'block';
   remBtn.style.display = 'block';
-  zone.style.display  = 'none';
+  zone.style.display   = 'none';
 }
-
 function hideImagePreview() {
   const img    = document.getElementById('imgPreview');
   const remBtn = document.getElementById('imgRemoveBtn');
   const zone   = document.getElementById('imgUploadZone');
-  img.src              = '';
-  img.style.display    = 'none';
+  img.src = ''; img.style.display = 'none';
   remBtn.style.display = 'none';
   zone.style.display   = '';
   document.getElementById('imgInput').value = '';
@@ -613,44 +573,27 @@ function hideImagePreview() {
 /* ══════════════════════════════════════════
    MODALS
 ══════════════════════════════════════════ */
-function openModal(id) {
-  document.getElementById(id).classList.add('open');
-}
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
-
-function closeModalOnOverlay(e, id) {
-  if (e.target === document.getElementById(id)) closeModal(id);
-}
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeModalOnOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
 
 /* ══════════════════════════════════════════
    UTILS
 ══════════════════════════════════════════ */
 function escHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
 function escAttr(str) {
-  return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return String(str).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-
 function renderHighlights(html) {
   return html.replace(/\*\*(.*?)\*\*/g, '<mark>$1</mark>');
 }
-
 function formatDate(d) {
   if (!d) return '';
   return new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 }
-
 function shakeEl(el) {
-  el.style.animation = 'none';
   el.style.borderColor = 'var(--danger)';
   setTimeout(() => { el.style.borderColor = ''; }, 1200);
 }
@@ -662,42 +605,29 @@ document.addEventListener('DOMContentLoaded', () => {
   loadState();
   renderDashboard();
 
-  // Dashboard — add section
   document.getElementById('addSectionBtn').addEventListener('click', openSectionModal);
-
-  // Section modal
   document.getElementById('sectionSave').addEventListener('click', saveSectionModal);
   document.getElementById('sectionCancel').addEventListener('click', () => closeModal('sectionModal'));
   document.getElementById('sectionModal').addEventListener('click', e => closeModalOnOverlay(e, 'sectionModal'));
   document.getElementById('sectionNameInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveSectionModal(); });
 
-  // Feed back
   document.getElementById('feedBackBtn').addEventListener('click', () => {
     document.getElementById('fab').classList.remove('visible');
     showScreen('dashboard');
     renderDashboard();
   });
 
-  // FAB
   document.getElementById('fab').addEventListener('click', () => openPostPanel(null));
-
-  // Post panel
   document.getElementById('panelCloseBtn').addEventListener('click', closePostPanel);
   document.getElementById('panelSaveBtn').addEventListener('click', savePost);
+  document.getElementById('postLabel').addEventListener('change', onLabelChange);
 
-  document.getElementById('postLabel').addEventListener('change', () => {
-    _editExtra = {};
-    updateSmartTools();
-  });
-
-  // Add label
   document.getElementById('addLabelBtn').addEventListener('click', openAddLabelModal);
   document.getElementById('addLabelSave').addEventListener('click', saveCustomLabel);
   document.getElementById('addLabelCancel').addEventListener('click', () => closeModal('addLabelModal'));
   document.getElementById('addLabelModal').addEventListener('click', e => closeModalOnOverlay(e, 'addLabelModal'));
   document.getElementById('newLabelInput').addEventListener('keydown', e => { if (e.key === 'Enter') saveCustomLabel(); });
 
-  // Image upload
   document.getElementById('imgUploadZone').addEventListener('click', () => document.getElementById('imgInput').click());
   document.getElementById('imgInput').addEventListener('change', e => {
     const file = e.target.files[0];
@@ -708,7 +638,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('imgRemoveBtn').addEventListener('click', hideImagePreview);
 
-  // Delete modal
   document.getElementById('deleteConfirm').addEventListener('click', doDelete);
   document.getElementById('deleteCancel').addEventListener('click', () => closeModal('deleteModal'));
   document.getElementById('deleteModal').addEventListener('click', e => closeModalOnOverlay(e, 'deleteModal'));
